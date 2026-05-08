@@ -1,14 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { CheckCircle, XCircle, AlertTriangle, BarChart2, List, Printer, FilePlus, AlertOctagon, Trash2, BookOpen, ImageIcon, Settings, Plus, PenTool, Camera } from 'lucide-react';
 
+// --- COMPONENTE DE FIRMA ---
 const SignaturePad = ({ label, onSave, savedImage }) => {
   const canvasRef = useRef(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const getPos = (e) => {
     const rect = canvasRef.current.getBoundingClientRect();
-    const clientX = e.clientX || (e.touches && e.touches[0].clientX);
-    const clientY = e.clientY || (e.touches && e.touches[0].clientY);
-    return { x: clientX - rect.left, y: clientY - rect.top };
+    const x = (e.clientX || e.touches[0].clientX) - rect.left;
+    const y = (e.clientY || e.touches[0].clientY) - rect.top;
+    return { x, y };
   };
   const start = (e) => {
     const { x, y } = getPos(e);
@@ -27,7 +28,7 @@ const SignaturePad = ({ label, onSave, savedImage }) => {
   const stop = () => { if (isDrawing) { setIsDrawing(false); onSave(canvasRef.current.toDataURL()); } };
 
   return (
-    <div className="flex flex-col items-center p-4 border-2 border-gray-100 rounded-3xl bg-white w-full shadow-sm">
+    <div className="flex flex-col items-center p-4 border-2 border-gray-100 rounded-3xl bg-white w-full">
       <span className="text-[10px] font-black uppercase mb-3 text-emerald-800 tracking-widest">{label}</span>
       {savedImage ? (
         <div className="relative w-full h-32 flex items-center justify-center border rounded-xl bg-gray-50">
@@ -41,6 +42,7 @@ const SignaturePad = ({ label, onSave, savedImage }) => {
   );
 };
 
+// --- BASE DE DATOS COMPLETA (ESTÁNDAR RSPO) ---
 const initialSopDatabase = [
   {
     id: 'AG-IN-3', code: 'AG-IN-3', title: 'Control de Strategus aloeus', area: 'Agronomía (Campo)',
@@ -140,11 +142,11 @@ const App = () => {
   const [checklist, setChecklist] = useState([]);
 
   useEffect(() => {
-    const saved = localStorage.getItem('audit_master_final_v105');
+    const saved = localStorage.getItem('audit_master_final_v110');
     if (saved) { const p = JSON.parse(saved); setAuditInfo(p.auditInfo); setChecklist(p.checklist); }
   }, []);
 
-  useEffect(() => { localStorage.setItem('audit_master_final_v105', JSON.stringify({ auditInfo, checklist })); }, [auditInfo, checklist]);
+  useEffect(() => { localStorage.setItem('audit_master_final_v110', JSON.stringify({ auditInfo, checklist })); }, [auditInfo, checklist]);
 
   const handleSop = (id) => {
     const s = initialSopDatabase.find(x => x.id === id);
@@ -152,12 +154,6 @@ const App = () => {
       setAuditInfo({...auditInfo, sopId: id});
       setChecklist(s.criteria.map(c => ({ id: c.id, description: c.d, status: 'pending', notes: '', photo: null })));
     }
-  };
-
-  const handleImg = (id, e) => {
-    const r = new FileReader();
-    r.onload = (ev) => setChecklist(prev => prev.map(i => i.id === id ? { ...i, photo: ev.target.result } : i));
-    r.readAsDataURL(e.target.files[0]);
   };
 
   const stats = (() => {
@@ -180,7 +176,7 @@ const App = () => {
         </div>
       </header>
 
-      <main className="max-w-5xl mx-auto p-4 w-full flex-grow">
+      <main className="max-w-4xl mx-auto p-4 w-full flex-grow">
         
         {/* VISTA CHECKLIST */}
         <div className={`${activeTab === 'checklist' ? 'block' : 'hidden print:block'} space-y-6`}>
@@ -195,7 +191,11 @@ const App = () => {
                 {initialSopDatabase.find(s => s.id === auditInfo.sopId)?.code} - {initialSopDatabase.find(s => s.id === auditInfo.sopId)?.title}
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="flex flex-col"><span className="text-[10px] uppercase font-bold text-gray-400">Fecha de Diligenciamiento</span><input type="date" className={inputStyle} value={auditInfo.date} onChange={e=>setAuditInfo({...auditInfo, date:e.target.value})} /></div>
+                {/* CAMPO DE FECHA INTERACTIVO */}
+                <div className="flex flex-col">
+                  <span className="text-[10px] uppercase font-bold text-gray-400">Fecha de Diligenciamiento</span>
+                  <input type="date" className={inputStyle} value={auditInfo.date} onChange={e=>setAuditInfo({...auditInfo, date:e.target.value})} />
+                </div>
                 <div className="flex flex-col"><span className="text-[10px] uppercase font-bold text-gray-400">Finca / Planta</span><input type="text" className={inputStyle} value={auditInfo.farmName} onChange={e=>setAuditInfo({...auditInfo, farmName:e.target.value})} /></div>
                 <div className="flex flex-col"><span className="text-[10px] uppercase font-bold text-gray-400">Lote / Área</span><input type="text" className={inputStyle} value={auditInfo.lotArea} onChange={e=>setAuditInfo({...auditInfo, lotArea:e.target.value})} /></div>
                 <div className="flex flex-col"><span className="text-[10px] uppercase font-bold text-gray-400">Auditor Responsable</span><input type="text" className={inputStyle} value={auditInfo.auditorName} onChange={e=>setAuditInfo({...auditInfo, auditorName:e.target.value})} /></div>
@@ -221,7 +221,7 @@ const App = () => {
                         {item.photo ? (
                           <><img src={item.photo} className="h-full w-full object-cover rounded-xl print:max-h-32" /><button onClick={()=>setChecklist(checklist.map(i=>i.id===item.id?{...i, photo:null}:i))} className="absolute top-2 right-2 bg-red-600 text-white p-1 rounded-full print:hidden"><Trash2 size={12}/></button></>
                         ) : (
-                          <label className="cursor-pointer flex flex-col items-center text-gray-400 print:hidden"><Camera size={24}/><input type="file" accept="image/*" capture="camera" className="hidden" onChange={e=>handleImg(item.id, e)} /></label>
+                          <label className="cursor-pointer flex flex-col items-center text-gray-400 print:hidden"><Camera size={24}/><input type="file" accept="image/*" capture="camera" className="hidden" onChange={e=>{const reader=new FileReader(); reader.onload=(ev)=>setChecklist(prev=>prev.map(i=>i.id===item.id?{...i, photo:ev.target.result}:i)); reader.readAsDataURL(e.target.files[0]);}} /></label>
                         )}
                       </div>
                     </div>
@@ -270,7 +270,7 @@ const App = () => {
             </div>
           </div>
       </main>
-      <footer className="p-10 text-center text-[9px] font-black text-emerald-800 bg-emerald-50 uppercase tracking-[0.4em] border-t print:hidden">Diseñada por Nicolás S. Acosta & Gemini</footer>
+      <footer className="p-10 text-center text-[9px] font-black text-emerald-800 bg-emerald-50 uppercase tracking-[0.4em] border-t print:hidden">Diseñada por Nicolás S. Acosta · Consultoría Técnica</footer>
     </div>
   );
 };
