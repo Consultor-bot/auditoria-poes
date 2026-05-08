@@ -1,26 +1,14 @@
-const CACHE_NAME = 'auditoria-v15'; // Versión de la maleta
+const CACHE_NAME = 'auditoria-rspo-v1';
 const urlsToCache = [
   '/',
   '/index.html',
   'https://cdn.tailwindcss.com'
 ];
 
-// Paso 1: Guardar la app en la maleta (Cache) al instalar
 self.addEventListener('install', event => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then(cache => {
-      console.log('Guardando archivos en la maleta...');
-      return cache.addAll(urlsToCache);
-    })
-  );
+  event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(urlsToCache)));
 });
 
-// Paso 2: Interceptar las peticiones cuando no hay internet
 self.addEventListener('fetch', event => {
-  event.respondWith(
-    caches.match(event.request).then(response => {
-      // Si el portero lo tiene en la maleta, lo entrega. Si no, lo busca en internet.
-      return response || fetch(event.request);
-    })
-  );
+  event.respondWith(caches.match(event.request).then(res => res || fetch(event.request)));
 });
