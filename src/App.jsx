@@ -22,9 +22,6 @@ import {
   Plus
 } from 'lucide-react';
 
-// ==========================================
-// BASE DE DATOS DE PROCEDIMIENTOS INICIALES (SOPs)
-// ==========================================
 const initialSopDatabase = [
   {
     id: 'AG-IN-3',
@@ -144,29 +141,23 @@ const initialSopDatabase = [
 ];
 
 const App = () => {
-  // Pestañas: 'checklist', 'dashboard', 'admin'
   const [activeTab, setActiveTab] = useState('checklist');
   const [showNewAuditModal, setShowNewAuditModal] = useState(false);
   const [showChangeSOPModal, setShowChangeSOPModal] = useState(false);
   const [pendingSopChange, setPendingSopChange] = useState(null);
 
-  // Estados de la Auditoría Activa
   const [auditInfo, setAuditInfo] = useState({
     farmName: '', lotArea: '', auditorName: '', operatorName: '', date: new Date().toISOString().split('T')[0], sopId: '' 
   });
   
   const [checklist, setChecklist] = useState([]);
-
-  // Estados del Administrador de POES
   const [sops, setSops] = useState([]);
   const [isCreatingSop, setIsCreatingSop] = useState(false);
   const [newSop, setNewSop] = useState({
     code: '', title: '', area: 'Agronomía (Campo)', version: '1', criteria: [{ id: 'c1', description: '' }]
   });
 
-  // Cargar datos al iniciar
   useEffect(() => {
-    // Forzamos v7 para asegurar que carguen los procedimientos base más recientes
     const storedSops = localStorage.getItem('rspo_custom_sops_v7');
     if (storedSops) {
       setSops(JSON.parse(storedSops));
@@ -184,7 +175,6 @@ const App = () => {
     }
   }, []);
 
-  // Autoguardados
   useEffect(() => {
     localStorage.setItem('rspoAuditData_vFinal7', JSON.stringify({ auditInfo, checklist }));
   }, [auditInfo, checklist]);
@@ -194,17 +184,6 @@ const App = () => {
       localStorage.setItem('rspo_custom_sops_v7', JSON.stringify(sops));
     }
   }, [sops]);
-
-  // =========================================
-  // LOGICA DEL CHECKLIST / AUDITORÍA
-  // =========================================
-  const handleSopChangeRequest = (newSopId) => {
-    const hasProgress = checklist.some(c => c.status !== 'pending' || c.notes !== '' || c.photo !== null);
-    if (hasProgress && newSopId !== auditInfo.sopId) {
-      setPendingSopChange(newSopId);
-      setShowChangeSOPModal(true);
-    } else { applySopChange(newSopId); }
-  };
 
   const applySopChange = (sopId) => {
     setAuditInfo({ ...auditInfo, sopId: sopId });
@@ -218,6 +197,14 @@ const App = () => {
       })));
     }
     setShowChangeSOPModal(false);
+  };
+
+  const handleSopChangeRequest = (newSopId) => {
+    const hasProgress = checklist.some(c => c.status !== 'pending' || c.notes !== '' || c.photo !== null);
+    if (hasProgress && newSopId !== auditInfo.sopId) {
+      setPendingSopChange(newSopId);
+      setShowChangeSOPModal(true);
+    } else { applySopChange(newSopId); }
   };
 
   const handleImageUpload = (id, event) => {
@@ -263,22 +250,6 @@ const App = () => {
   };
   const currentTier = getComplianceTier(stats.score);
 
-  // =========================================
-  // LOGICA DEL ADMINISTRADOR DE POES
-  // =========================================
-  const handleCriterionChange = (index, value) => {
-    const updated = [...newSop.criteria];
-    updated[index].description = value;
-    setNewSop({ ...newSop, criteria: updated });
-  };
-
-  const addCriterion = () => {
-    setNewSop({ 
-      ...newSop, 
-      criteria: [...newSop.criteria, { id: `c${newSop.criteria.length + 1}`, description: '' }] 
-    });
-  };
-
   const saveNewSop = () => {
     if (!newSop.code || !newSop.title || newSop.criteria[0].description.trim() === '') return alert("⚠️ Campos incompletos.");
     setSops([...sops, { ...newSop, id: `custom-${Date.now()}`, criteria: newSop.criteria.filter(c => c.description.trim() !== '') }]);
@@ -286,152 +257,15 @@ const App = () => {
     setIsCreatingSop(false);
   };
 
+  const commonInputClass = "p-3 border border-gray-300 rounded-lg bg-white text-gray-900 placeholder-gray-400 outline-none focus:ring-2 focus:ring-emerald-500 print:border-none print:font-bold w-full";
+
   return (
     <div className="min-h-screen bg-gray-50 text-gray-900 font-sans flex flex-col print:bg-white">
       <header className="bg-emerald-800 text-white p-4 shadow-lg sticky top-0 z-50 print:hidden">
         <div className="max-w-5xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
           <div className="flex items-center space-x-2">
             <BookOpen className="w-6 h-6 text-emerald-200" />
-            <h1 className="text-xl font-bold">Auditoría POES RSPO</h1>
+            <h1 className="text-xl font-bold uppercase tracking-tight">Auditoría POES</h1>
           </div>
-          <div className="flex space-x-2 overflow-x-auto w-full md:w-auto pb-1 md:pb-0">
-            <button onClick={() => setActiveTab('checklist')} className={`p-2 px-3 rounded flex items-center space-x-2 font-medium ${activeTab === 'checklist' ? 'bg-white text-emerald-800' : 'hover:bg-emerald-700'}`}><List size={18}/> <span>Verificación</span></button>
-            <button onClick={() => setActiveTab('dashboard')} className={`p-2 px-3 rounded flex items-center space-x-2 font-medium ${activeTab === 'dashboard' ? 'bg-white text-emerald-800' : 'hover:bg-emerald-700'}`} disabled={!auditInfo.sopId}><BarChart2 size={18}/> <span>Dashboard</span></button>
-            <button onClick={() => window.print()} className="p-2 px-3 border border-emerald-400 rounded hover:bg-emerald-700" disabled={!auditInfo.sopId}><Printer size={18}/></button>
-            <button onClick={() => setShowNewAuditModal(true)} className="p-2 px-3 bg-red-700 rounded hover:bg-red-800 shadow-inner text-white"><FilePlus size={18}/></button>
-            <button onClick={() => setActiveTab('admin')} className={`p-2 px-3 rounded flex items-center space-x-2 ml-4 border-l border-emerald-600 pl-4 ${activeTab === 'admin' ? 'bg-emerald-900 text-white' : 'hover:bg-emerald-700 text-emerald-200'}`}><Settings size={18}/> <span>Gestión</span></button>
-          </div>
-        </div>
-      </header>
-
-      <main className="max-w-5xl mx-auto p-4 flex-grow w-full">
-        {activeTab === 'checklist' && (
-          <div className="animate-in fade-in duration-300">
-            <section className="bg-white p-6 rounded-xl shadow-sm mb-6 border border-gray-200 print:shadow-none print:border-none print:p-0">
-              <h2 className="text-sm font-bold text-emerald-700 uppercase mb-4 tracking-wider">Configuración General</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="md:col-span-2 print:hidden">
-                  <select value={auditInfo.sopId} onChange={(e) => handleSopChangeRequest(e.target.value)} className="w-full p-3 bg-emerald-50 border border-emerald-200 rounded-lg font-bold text-emerald-900">
-                    <option value="">-- Seleccionar Procedimiento (POES) --</option>
-                    {sops.map(s => <option key={s.id} value={s.id}>{s.code} - {s.title} ({s.area})</option>)}
-                  </select>
-                </div>
-                <input type="text" placeholder="Finca / Planta" value={auditInfo.farmName} onChange={e => setAuditInfo({...auditInfo, farmName: e.target.value})} className="p-2 border rounded print:border-none print:font-bold" />
-                <input type="text" placeholder="Lote / Área" value={auditInfo.lotArea} onChange={e => setAuditInfo({...auditInfo, lotArea: e.target.value})} className="p-2 border rounded print:border-none print:font-bold" />
-                <input type="text" placeholder="Auditor Responsable" value={auditInfo.auditorName} onChange={e => setAuditInfo({...auditInfo, auditorName: e.target.value})} className="p-2 border rounded print:border-none print:font-bold" />
-                <input type="text" placeholder="Operario Auditado" value={auditInfo.operatorName} onChange={e => setAuditInfo({...auditInfo, operatorName: e.target.value})} className="p-2 border rounded print:border-none print:font-bold" />
-              </div>
-            </section>
-
-            {auditInfo.sopId ? (
-              <div className="space-y-4">
-                <div className="bg-emerald-900 text-white p-4 rounded-t-xl print:text-black print:bg-white print:border-b-2 print:border-black">
-                  <h3 className="font-bold text-lg uppercase tracking-wide">{currentSOP?.code} - {currentSOP?.title}</h3>
-                </div>
-                <div className="bg-white border rounded-b-xl divide-y shadow-sm print:border-none print:shadow-none">
-                  {checklist.map(item => (
-                    <div key={item.id} className="p-5 hover:bg-gray-50 transition-colors print:p-2 print:break-inside-avoid">
-                      <p className="font-medium mb-4 text-gray-800 leading-relaxed">{item.description}</p>
-                      <div className="flex flex-wrap gap-2 mb-4 print:hidden">
-                        <button onClick={() => setChecklist(prev => prev.map(i => i.id === item.id ? {...i, status: 'compliant'} : i))} className={`px-4 py-2 rounded-full text-xs font-bold transition-all ${item.status === 'compliant' ? 'bg-emerald-600 text-white shadow-md scale-105' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>Cumple</button>
-                        <button onClick={() => setChecklist(prev => prev.map(i => i.id === item.id ? {...i, status: 'in-progress'} : i))} className={`px-4 py-2 rounded-full text-xs font-bold transition-all ${item.status === 'in-progress' ? 'bg-amber-500 text-white shadow-md scale-105' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>En Proceso</button>
-                        <button onClick={() => setChecklist(prev => prev.map(i => i.id === item.id ? {...i, status: 'non-compliant'} : i))} className={`px-4 py-2 rounded-full text-xs font-bold transition-all ${item.status === 'non-compliant' ? 'bg-red-600 text-white shadow-md scale-105' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>No Cumple</button>
-                      </div>
-                      <div className="hidden print:block font-bold mb-2">
-                          {item.status === 'compliant' ? '✓ CUMPLE' : item.status === 'non-compliant' ? '✗ NO CUMPLE' : item.status === 'in-progress' ? '⚠ EN PROCESO' : '---'}
-                      </div>
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-gray-50 p-4 rounded-lg print:bg-transparent print:p-0">
-                        <textarea placeholder="Observaciones..." className="md:col-span-2 p-3 border rounded shadow-sm focus:ring-2 focus:ring-emerald-500 print:border-none print:italic" value={item.notes} onChange={e => setChecklist(prev => prev.map(i => i.id === item.id ? {...i, notes: e.target.value} : i))} />
-                        <div className="flex items-center justify-center border-2 border-dashed border-gray-300 rounded bg-white min-h-[120px] relative print:border-none print:justify-start">
-                          {item.photo ? (
-                            <><img src={item.photo} className="w-full h-full object-contain p-1 print:max-h-[150px]" /><button onClick={() => setChecklist(prev => prev.map(i => i.id === item.id ? {...i, photo: null} : i))} className="absolute top-1 right-1 bg-red-600 text-white p-1 rounded-full shadow-lg print:hidden hover:bg-red-700"><Trash2 size={14}/></button></>
-                          ) : (
-                            <label className="cursor-pointer flex flex-col items-center print:hidden hover:text-emerald-600 transition-colors"><ImageIcon className="text-gray-400 w-8 h-8 mb-1" /><span className="text-[10px] text-gray-500 font-bold uppercase text-center px-2">Cámara / Galería</span><input type="file" accept="image/*" className="hidden" onChange={e => handleImageUpload(item.id, e)} /></label>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ) : (
-              <div className="text-center py-24 bg-white border-2 border-dashed rounded-3xl text-gray-400">
-                 <ImageIcon className="mx-auto w-16 h-16 opacity-10 mb-4" />
-                 <h2 className="text-2xl font-bold uppercase tracking-widest">Seleccionar POES</h2>
-              </div>
-            )}
-          </div>
-        )}
-
-        {activeTab === 'dashboard' && (
-          <div className="animate-in fade-in space-y-6">
-             <div className="bg-emerald-900 text-white p-10 rounded-3xl flex justify-between shadow-xl border border-emerald-700">
-                <div><h2 className="text-5xl font-black">{stats.score}%</h2><p className="text-emerald-200 font-medium uppercase tracking-widest mt-2">Cumplimiento Global</p></div>
-                <BarChart2 size={80} className="opacity-10" />
-             </div>
-             <div className={`p-8 rounded-2xl border-2 flex items-center shadow-md ${currentTier.colorClass}`}>
-                <div className="mr-6 p-4 bg-white rounded-full shadow-sm">{currentTier.icon}</div>
-                <div><h3 className="text-xl font-bold uppercase">Resultado: {currentTier.label}</h3><p className="font-medium mt-1">Seguimiento requerido en: <strong className="underline">{currentTier.time}</strong></p></div>
-             </div>
-             <div className="bg-white rounded-2xl shadow-sm border overflow-hidden mt-8">
-                 <table className="w-full text-left">
-                    <thead className="bg-gray-100 text-xs uppercase text-gray-500 font-bold"><tr className="border-b"><th className="p-4">Rango</th><th className="p-4">Criterio</th><th className="p-4">Plazo Seguimiento</th></tr></thead>
-                    <tbody className="divide-y text-sm font-bold">
-                        <tr className={currentTier.id === 'red' ? 'bg-red-50' : ''}><td className="p-4">0% - 54%</td><td className="p-4 text-red-600">No cumple</td><td className="p-4">2 Meses</td></tr>
-                        <tr className={currentTier.id === 'yellow' ? 'bg-yellow-50' : ''}><td className="p-4">55% - 84%</td><td className="p-4 text-amber-600">Parcial</td><td className="p-4">6 Meses</td></tr>
-                        <tr className={currentTier.id === 'green' ? 'bg-emerald-50' : ''}><td className="p-4">85% - 100%</td><td className="p-4 text-emerald-700">Cumple</td><td className="p-4">1 Año (Anual)</td></tr>
-                    </tbody>
-                 </table>
-             </div>
-             <div className="hidden print:flex justify-around mt-32 pt-10 border-t border-black">
-                <div className="text-center w-64 border-t border-black pt-4 font-bold text-lg uppercase tracking-widest">Firma Auditor</div>
-                <div className="text-center w-64 border-t border-black pt-4 font-bold text-lg uppercase tracking-widest">Firma Auditado</div>
-             </div>
-          </div>
-        )}
-
-        {activeTab === 'admin' && (
-          <div className="animate-in fade-in space-y-6">
-             <div className="bg-slate-800 text-white p-8 rounded-3xl flex justify-between shadow-xl items-center relative overflow-hidden">
-                 <div className="relative z-10"><h2 className="text-3xl font-black uppercase tracking-tight">Gestor de Procedimientos</h2><p className="text-slate-400 text-sm font-medium mt-1">Base de datos local de POES / SOPs.</p></div>
-                 <Settings size={120} className="absolute right-[-20px] bottom-[-40px] opacity-10 text-emerald-400" />
-             </div>
-             {!isCreatingSop ? (
-                 <><div className="flex justify-end"><button onClick={() => setIsCreatingSop(true)} className="bg-emerald-600 hover:bg-emerald-700 text-white px-8 py-3 rounded-xl font-bold flex items-center shadow-lg transition-transform hover:-translate-y-1"><Plus className="mr-2" /> Agregar Nuevo POES</button></div>
-                 <div className="bg-white rounded-2xl shadow-sm border overflow-hidden"><table className="w-full text-left"><thead className="bg-gray-50 border-b text-xs uppercase text-gray-500 font-bold"><tr><th className="p-5">Código / Área</th><th className="p-5">Título del Procedimiento</th><th className="p-5 text-right">Gestión</th></tr></thead><tbody className="divide-y text-sm">
-                    {sops.map(sop => (<tr key={sop.id} className="hover:bg-gray-50 group transition-colors"><td className="p-5"><span className="font-bold text-emerald-800">{sop.code}</span><br/><span className="text-[10px] bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-black uppercase">{sop.area}</span></td><td className="p-5 font-bold text-gray-700">{sop.title}</td><td className="p-5 text-right"><button onClick={() => auditInfo.sopId !== sop.id ? setSops(sops.filter(s => s.id !== sop.id)) : alert("En uso.")} className="text-red-400 hover:text-red-700 p-2 opacity-50 group-hover:opacity-100 transition-opacity"><Trash2 size={20}/></button></td></tr>))}
-                 </tbody></table></div></>
-             ) : (
-                 <div className="bg-white rounded-3xl shadow-2xl border p-8 animate-in slide-in-from-bottom-6">
-                     <div className="flex justify-between items-center mb-8"><h3 className="text-2xl font-black text-emerald-900 uppercase">Construir Nuevo POES</h3><button onClick={() => setIsCreatingSop(false)} className="text-gray-300 hover:text-red-500 transition-colors"><XCircle size={32}/></button></div>
-                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-                         <input type="text" placeholder="Código (Ej. AG-IN-04)" className="p-4 border-2 border-gray-50 rounded-2xl bg-gray-50 focus:bg-white outline-none font-bold" value={newSop.code} onChange={e => setNewSop({...newSop, code: e.target.value})} />
-                         <input type="text" placeholder="Título" className="p-4 border-2 border-gray-50 rounded-2xl bg-gray-50 focus:bg-white outline-none font-bold" value={newSop.title} onChange={e => setNewSop({...newSop, title: e.target.value})} />
-                         <select className="p-4 border-2 border-gray-50 rounded-2xl bg-gray-50 focus:bg-white outline-none font-bold" value={newSop.area} onChange={e => setNewSop({...newSop, area: e.target.value})}><option>Agronomía (Campo)</option><option>Planta Extractora (Molino)</option><option>Gestión Ambiental / SST</option><option>Administrativo</option></select>
-                         <input type="number" className="p-4 border-2 border-gray-50 rounded-2xl bg-gray-50 focus:bg-white outline-none font-bold" value={newSop.version} onChange={e => setNewSop({...newSop, version: e.target.value})} />
-                     </div>
-                     <div className="bg-emerald-50 p-6 rounded-3xl border border-emerald-100 mb-8 space-y-4">
-                         {newSop.criteria.map((c, i) => (<div key={i} className="flex gap-4 group"><div className="bg-white border-2 border-emerald-200 font-black p-4 rounded-2xl min-w-[56px] h-[56px] text-center text-emerald-800">{i+1}</div><textarea className="flex-grow p-4 rounded-2xl text-sm font-medium focus:bg-white outline-none resize-none" rows="2" placeholder="Lineamiento..." value={c.description} onChange={e => {const u = [...newSop.criteria]; u[i].description = e.target.value; setNewSop({...newSop, criteria: u}); }} /><button onClick={() => setNewSop({...newSop, criteria: newSop.criteria.filter((_, idx) => idx !== i)})} className="text-gray-300 hover:text-red-500 p-2 transition-colors"><Trash2/></button></div>))}
-                         <button onClick={addCriterion} className="bg-white border-2 border-emerald-200 text-emerald-800 font-black text-[10px] uppercase px-6 py-3 rounded-2xl shadow-sm hover:bg-emerald-600 hover:text-white transition-all"><Plus size={16} className="inline mr-2"/> Agregar Criterio</button>
-                     </div>
-                     <div className="flex justify-end space-x-4"><button onClick={() => setIsCreatingSop(false)} className="px-8 py-4 border-2 border-gray-100 rounded-2xl font-black uppercase text-xs text-gray-400 hover:bg-gray-50 transition-colors">Cancelar</button><button onClick={saveNewSop} className="px-10 py-4 bg-emerald-600 text-white rounded-2xl font-black uppercase text-xs shadow-xl hover:bg-emerald-700 transition-all">Guardar POES</button></div>
-                 </div>
-             )}
-          </div>
-        )}
-      </main>
-
-      <footer className="p-8 text-center text-[10px] font-black text-emerald-800 bg-emerald-50 uppercase tracking-[0.2em] border-t border-emerald-100 print:hidden">Diseñada en conjunto por Nicolas S. Acosta & Gemini</footer>
-
-      {showNewAuditModal && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4"><div className="bg-white p-10 rounded-[2.5rem] max-w-sm w-full shadow-2xl"><AlertOctagon className="text-red-600 w-16 h-16 mb-6 mx-auto" /><h3 className="text-2xl font-black mb-2 text-center uppercase">¿Limpiar Auditoría?</h3><p className="text-gray-500 text-sm mb-8 text-center">Se borrará todo el progreso de la pantalla.</p><div className="flex flex-col gap-3"><button onClick={() => { setChecklist([]); setAuditInfo({farmName:'', lotArea:'', auditorName:'', operatorName:'', date: new Date().toISOString().split('T')[0], sopId:''}); setShowNewAuditModal(false); setActiveTab('checklist'); }} className="w-full p-4 bg-red-600 text-white rounded-2xl font-black uppercase text-xs shadow-lg">Sí, borrar</button><button onClick={() => setShowNewAuditModal(false)} className="w-full p-4 bg-gray-100 text-gray-400 rounded-2xl font-black uppercase text-xs">Cancelar</button></div></div></div>
-      )}
-
-      {showChangeSOPModal && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4"><div className="bg-white p-10 rounded-[2.5rem] max-w-sm w-full shadow-2xl"><AlertTriangle className="text-amber-500 w-16 h-16 mb-6 mx-auto" /><h3 className="text-2xl font-black mb-2 text-center uppercase">¿Cambiar POES?</h3><p className="text-gray-500 text-sm mb-8 text-center">Perderás el progreso calificado de este procedimiento.</p><div className="flex flex-col gap-3"><button onClick={() => applySopChange(pendingSopChange)} className="w-full p-4 bg-amber-500 text-white rounded-2xl font-black uppercase text-xs shadow-lg">Sí, cambiar</button><button onClick={() => setShowChangeSOPModal(false)} className="w-full p-4 bg-gray-100 text-gray-400 rounded-2xl font-black uppercase text-xs">Volver</button></div></div></div>
-      )}
-    </div>
-  );
-};
-
-export default App;
+          <div className="flex space-x-2">
+            <button onClick={() => setActiveTab('checklist')} className={`p-2 px-3 rounded flex items-center space-x-2 font-medium ${activeTab === 'checklist' ? '
