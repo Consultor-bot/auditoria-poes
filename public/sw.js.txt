@@ -1,5 +1,4 @@
-const CACHE_NAME = 'auditoria-v1';
-// Lista de archivos que el cel debe guardar para trabajar sin internet
+const CACHE_NAME = 'auditoria-v12';
 const urlsToCache = [
   '/',
   '/index.html',
