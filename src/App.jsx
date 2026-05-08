@@ -43,7 +43,7 @@ const SignaturePad = ({ label, onSave, savedImage }) => {
 };
 
 // ==========================================
-// BASE DE DATOS ORIGINAL SIN RECORTES (SOPs)
+// BASE DE DATOS MADRE (ORIGINAL SIN RECORTES)
 // ==========================================
 const initialSopDatabase = [
   {
@@ -141,11 +141,11 @@ const App = () => {
   const [checklist, setChecklist] = useState([]);
 
   useEffect(() => {
-    const saved = localStorage.getItem('audit_final_v100');
+    const saved = localStorage.getItem('audit_final_vMaster');
     if (saved) { const p = JSON.parse(saved); setAuditInfo(p.auditInfo); setChecklist(p.checklist); }
   }, []);
 
-  useEffect(() => { localStorage.setItem('audit_final_v100', JSON.stringify({ auditInfo, checklist })); }, [auditInfo, checklist]);
+  useEffect(() => { localStorage.setItem('audit_final_vMaster', JSON.stringify({ auditInfo, checklist })); }, [auditInfo, checklist]);
 
   const handleSop = (id) => {
     const s = initialSopDatabase.find(x => x.id === id);
@@ -170,7 +170,7 @@ const App = () => {
   const inputStyle = "p-3 border border-gray-300 rounded-xl bg-white text-gray-900 w-full text-sm outline-none focus:ring-2 focus:ring-emerald-500";
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col font-sans">
+    <div className="min-h-screen bg-gray-50 text-gray-900 flex flex-col font-sans">
       <header className="bg-emerald-800 text-white p-4 sticky top-0 z-50 flex justify-between items-center shadow-lg print:hidden">
         <h1 className="font-bold text-sm uppercase tracking-tighter flex items-center gap-2"><BookOpen size={20}/> Auditoría RSPO</h1>
         <div className="flex gap-2">
@@ -183,7 +183,7 @@ const App = () => {
 
       <main className="max-w-4xl mx-auto p-4 w-full flex-grow">
         
-        {/* CHECKLIST: Siempre visible en impresión */}
+        {/* VISTA CHECKLIST */}
         <div className={`${activeTab === 'checklist' ? 'block' : 'hidden print:block'} space-y-6`}>
             <section className="bg-white p-6 rounded-3xl shadow-sm border space-y-4 print:border-none print:shadow-none">
               <div className="print:hidden">
@@ -209,8 +209,8 @@ const App = () => {
                   <div key={item.id} className="p-6 hover:bg-gray-50 transition-colors print:break-inside-avoid print:py-4">
                     <p className="text-sm font-bold text-gray-700 mb-4 leading-relaxed">{item.description}</p>
                     <div className="flex gap-2 mb-4 print:hidden">
-                      <button onClick={()=>setChecklist(checklist.map(i=>i.id===item.id?{...i, status:'compliant'}:i))} className={`flex-1 p-3 rounded-xl text-[10px] font-black uppercase ${item.status==='compliant'?'bg-emerald-600 text-white shadow-lg':'bg-gray-100 text-gray-400'}`}>CONFORME</button>
-                      <button onClick={()=>setChecklist(checklist.map(i=>i.id===item.id?{...i, status:'non-compliant'}:i))} className={`flex-1 p-3 rounded-xl text-[10px] font-black uppercase ${item.status==='non-compliant'?'bg-red-600 text-white shadow-lg':'bg-gray-100 text-gray-400'}`}>NO CONFORME</button>
+                      <button onClick={()=>setChecklist(checklist.map(i=>i.id===item.id?{...i, status:'compliant'}:i))} className={`flex-1 p-3 rounded-xl text-[10px] font-black ${item.status==='compliant'?'bg-emerald-600 text-white shadow-lg':'bg-gray-100 text-gray-400'}`}>CONFORME</button>
+                      <button onClick={()=>setChecklist(checklist.map(i=>i.id===item.id?{...i, status:'non-compliant'}:i))} className={`flex-1 p-3 rounded-xl text-[10px] font-black ${item.status==='non-compliant'?'bg-red-600 text-white shadow-lg':'bg-gray-100 text-gray-400'}`}>NO CONFORME</button>
                     </div>
                     <div className="hidden print:block font-bold text-xs mb-2 italic">
                         RESULTADO: {item.status === 'compliant' ? '✅ CONFORME' : item.status === 'non-compliant' ? '❌ NO CONFORME' : '---'}
@@ -219,9 +219,9 @@ const App = () => {
                       <div className="md:col-span-2 flex flex-col"><span className="text-[10px] uppercase font-bold text-gray-400 print:hidden">Observaciones</span><textarea className={inputStyle + " h-20"} value={item.notes} onChange={e=>setChecklist(checklist.map(i=>i.id===item.id?{...i, notes:e.target.value}:i))} /></div>
                       <div className="border-2 border-dashed border-gray-200 rounded-2xl flex items-center justify-center bg-gray-50 min-h-[100px] relative print:border-none">
                         {item.photo ? (
-                          <><img src={item.photo} className="h-full w-full object-cover rounded-xl print:max-h-32" /><button onClick={()=>setChecklist(checklist.map(i=>i.id===item.id?{...i, photo:null}:i))} className="absolute top-2 right-2 bg-red-600 text-white p-1 rounded-full print:hidden"><Trash2 size={12}/></button></>
+                          <><img src={item.photo} className="h-full w-full object-cover rounded-xl" /><button onClick={()=>setChecklist(checklist.map(i=>i.id===item.id?{...i, photo:null}:i))} className="absolute top-2 right-2 bg-red-600 text-white p-1 rounded-full print:hidden"><Trash2 size={12}/></button></>
                         ) : (
-                          <label className="cursor-pointer flex flex-col items-center text-gray-400 print:hidden"><Camera size={24}/><input type="file" accept="image/*" capture="camera" className="hidden" onChange={e=>handleImg(item.id, e)} /></label>
+                          <label className="cursor-pointer flex flex-col items-center text-gray-400 print:hidden"><Camera size={24}/><input type="file" accept="image/*" capture="camera" className="hidden" onChange={e=>{const r=new FileReader(); r.onload=(ev)=>setChecklist(prev=>prev.map(i=>i.id===item.id?{...i, photo:ev.target.result}:i)); r.readAsDataURL(e.target.files[0]);}} /></label>
                         )}
                       </div>
                     </div>
@@ -238,14 +238,14 @@ const App = () => {
             )}
         </div>
 
-        {/* DASHBOARD: Siempre visible en impresión */}
+        {/* VISTA DASHBOARD */}
         <div className={`${activeTab === 'dashboard' ? 'block' : 'hidden print:block'} space-y-6 print:break-before-page print:mt-10`}>
-            <div className={`p-12 rounded-[3.5rem] text-center shadow-2xl print:shadow-none print:border-2 ${stats.score>=85?'bg-emerald-900 text-white print:border-emerald-900 print:text-emerald-900':stats.score>=55?'bg-amber-500 text-white print:border-amber-500 print:text-amber-500':'bg-red-700 text-white print:border-red-700 print:text-red-700'}`}>
+            <div className={`p-12 rounded-[3.5rem] text-center shadow-2xl print:border-2 ${stats.score>=85?'bg-emerald-900 text-white print:border-emerald-900 print:text-emerald-900':stats.score>=55?'bg-amber-500 text-white print:border-amber-500 print:text-amber-500':'bg-red-700 text-white print:border-red-700 print:text-red-700'}`}>
               <h2 className="text-8xl font-black print:text-5xl">{stats.score}%</h2>
               <p className="uppercase text-[10px] font-bold tracking-[0.4em] opacity-80 mt-2">Cumplimiento Global</p>
             </div>
 
-            <div className="bg-white rounded-[2.5rem] border border-gray-100 overflow-hidden shadow-sm print:border-none print:shadow-none">
+            <div className="bg-white rounded-[2.5rem] border overflow-hidden shadow-sm print:border-none print:shadow-none">
               <table className="w-full text-left text-xs">
                 <thead className="bg-gray-100 font-black text-gray-400 uppercase border-b">
                   <tr><th className="p-5">Rango</th><th className="p-5">Criterio</th><th className="p-5 text-right">Plazo Seguimiento</th></tr>
@@ -270,7 +270,7 @@ const App = () => {
             </div>
           </div>
       </main>
-      <footer className="p-10 text-center text-[9px] font-black text-emerald-800 bg-emerald-50 uppercase tracking-[0.4em] border-t print:hidden">Diseñada por Nicolás S. Acosta & Gemini</footer>
+      <footer className="p-10 text-center text-[9px] font-black text-emerald-800 bg-emerald-50 uppercase tracking-[0.4em] border-t print:hidden">Diseñada por Nicolás S. Acosta · Consultoría Técnica</footer>
     </div>
   );
 };
