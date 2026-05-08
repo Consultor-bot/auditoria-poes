@@ -1,14 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { CheckCircle, XCircle, AlertTriangle, BarChart2, List, Printer, FilePlus, AlertOctagon, Trash2, BookOpen, ImageIcon, Settings, Plus, PenTool, Camera } from 'lucide-react';
 
+// --- COMPONENTE DE FIRMA (SOPORTE TÁCTIL) ---
 const SignaturePad = ({ label, onSave, savedImage }) => {
   const canvasRef = useRef(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const getPos = (e) => {
     const rect = canvasRef.current.getBoundingClientRect();
-    const x = (e.clientX || e.touches[0].clientX) - rect.left;
-    const y = (e.clientY || e.touches[0].clientY) - rect.top;
-    return { x, y };
+    const clientX = e.clientX || (e.touches && e.touches[0].clientX);
+    const clientY = e.clientY || (e.touches && e.touches[0].clientY);
+    return { x: clientX - rect.left, y: clientY - rect.top };
   };
   const start = (e) => {
     const { x, y } = getPos(e);
@@ -28,11 +29,11 @@ const SignaturePad = ({ label, onSave, savedImage }) => {
 
   return (
     <div className="flex flex-col items-center p-4 border-2 border-gray-100 rounded-3xl bg-white w-full">
-      <span className="text-[10px] font-black uppercase mb-3 text-emerald-800">{label}</span>
+      <span className="text-[10px] font-black uppercase mb-3 text-emerald-800 tracking-widest">{label}</span>
       {savedImage ? (
         <div className="relative w-full h-32 flex items-center justify-center border rounded-xl bg-gray-50">
           <img src={savedImage} className="max-h-full" alt="Firma" />
-          <button onClick={() => onSave(null)} className="absolute top-1 right-1 bg-red-100 text-red-600 p-1 rounded-full"><Trash2 size={12}/></button>
+          <button onClick={() => onSave(null)} className="absolute top-1 right-1 bg-red-100 text-red-600 p-1 rounded-full print:hidden"><Trash2 size={12}/></button>
         </div>
       ) : (
         <canvas ref={canvasRef} width={300} height={120} onMouseDown={start} onMouseMove={move} onMouseUp={stop} onTouchStart={start} onTouchMove={move} onTouchEnd={stop} className="border rounded-lg w-full touch-none bg-gray-50" />
@@ -41,6 +42,9 @@ const SignaturePad = ({ label, onSave, savedImage }) => {
   );
 };
 
+// ==========================================
+// BASE DE DATOS ORIGINAL SIN RECORTES (SOPs)
+// ==========================================
 const initialSopDatabase = [
   {
     id: 'AG-IN-3', code: 'AG-IN-3', title: 'Control de Strategus aloeus', area: 'Agronomía (Campo)',
@@ -137,11 +141,11 @@ const App = () => {
   const [checklist, setChecklist] = useState([]);
 
   useEffect(() => {
-    const saved = localStorage.getItem('audit_master_final_v1');
+    const saved = localStorage.getItem('audit_final_v100');
     if (saved) { const p = JSON.parse(saved); setAuditInfo(p.auditInfo); setChecklist(p.checklist); }
   }, []);
 
-  useEffect(() => { localStorage.setItem('audit_master_final_v1', JSON.stringify({ auditInfo, checklist })); }, [auditInfo, checklist]);
+  useEffect(() => { localStorage.setItem('audit_final_v100', JSON.stringify({ auditInfo, checklist })); }, [auditInfo, checklist]);
 
   const handleSop = (id) => {
     const s = initialSopDatabase.find(x => x.id === id);
@@ -163,7 +167,7 @@ const App = () => {
     return { score: evaluated > 0 ? Math.round((ok / evaluated) * 100) : 0 };
   })();
 
-  const inputStyle = "p-3 border border-gray-300 rounded-xl bg-white text-gray-900 w-full text-sm focus:ring-2 focus:ring-emerald-500 outline-none";
+  const inputStyle = "p-3 border border-gray-300 rounded-xl bg-white text-gray-900 w-full text-sm outline-none focus:ring-2 focus:ring-emerald-500";
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col font-sans">
@@ -178,71 +182,97 @@ const App = () => {
       </header>
 
       <main className="max-w-4xl mx-auto p-4 w-full flex-grow">
-        {activeTab === 'checklist' ? (
-          <div className="space-y-6">
-            <section className="bg-white p-6 rounded-3xl shadow-sm border space-y-4">
-              <select value={auditInfo.sopId} onChange={e => handleSop(e.target.value)} className={inputStyle + " font-bold bg-emerald-50 text-emerald-900"}>
-                <option value="">-- SELECCIONAR PROCEDIMIENTO --</option>
-                {initialSopDatabase.map(s => <option key={s.id} value={s.id}>{s.code} - {s.title}</option>)}
-              </select>
+        
+        {/* CHECKLIST: Siempre visible en impresión */}
+        <div className={`${activeTab === 'checklist' ? 'block' : 'hidden print:block'} space-y-6`}>
+            <section className="bg-white p-6 rounded-3xl shadow-sm border space-y-4 print:border-none print:shadow-none">
+              <div className="print:hidden">
+                <select value={auditInfo.sopId} onChange={e => handleSop(e.target.value)} className={inputStyle + " font-black bg-emerald-50 text-emerald-900"}>
+                    <option value="">-- SELECCIONAR PROCEDIMIENTO --</option>
+                    {initialSopDatabase.map(s => <option key={s.id} value={s.id}>{s.code} - {s.title}</option>)}
+                </select>
+              </div>
+              <div className="hidden print:block font-black text-emerald-800 text-lg border-b-2 border-emerald-800 pb-2 mb-4">
+                {initialSopDatabase.find(s => s.id === auditInfo.sopId)?.code} - {initialSopDatabase.find(s => s.id === auditInfo.sopId)?.title}
+              </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <input type="text" placeholder="Finca / Planta" className={inputStyle} value={auditInfo.farmName} onChange={e=>setAuditInfo({...auditInfo, farmName:e.target.value})} />
-                <input type="text" placeholder="Lote / Área" className={inputStyle} value={auditInfo.lotArea} onChange={e=>setAuditInfo({...auditInfo, lotArea:e.target.value})} />
-                <input type="text" placeholder="Auditor Responsable" className={inputStyle} value={auditInfo.auditorName} onChange={e=>setAuditInfo({...auditInfo, auditorName:e.target.value})} />
-                <input type="text" placeholder="Operario Auditado" className={inputStyle} value={auditInfo.operatorName} onChange={e=>setAuditInfo({...auditInfo, operatorName:e.target.value})} />
+                <div className="flex flex-col"><span className="text-[10px] uppercase font-bold text-gray-400">Finca / Planta</span><input type="text" className={inputStyle} value={auditInfo.farmName} onChange={e=>setAuditInfo({...auditInfo, farmName:e.target.value})} /></div>
+                <div className="flex flex-col"><span className="text-[10px] uppercase font-bold text-gray-400">Lote / Área</span><input type="text" className={inputStyle} value={auditInfo.lotArea} onChange={e=>setAuditInfo({...auditInfo, lotArea:e.target.value})} /></div>
+                <div className="flex flex-col"><span className="text-[10px] uppercase font-bold text-gray-400">Auditor Responsable</span><input type="text" className={inputStyle} value={auditInfo.auditorName} onChange={e=>setAuditInfo({...auditInfo, auditorName:e.target.value})} /></div>
+                <div className="flex flex-col"><span className="text-[10px] uppercase font-bold text-gray-400">Operario Auditado</span><input type="text" className={inputStyle} value={auditInfo.operatorName} onChange={e=>setAuditInfo({...auditInfo, operatorName:e.target.value})} /></div>
               </div>
             </section>
 
-            {checklist.map(item => (
-              <div key={item.id} className="bg-white p-6 rounded-2xl border mb-4">
-                <p className="text-sm font-bold text-gray-700 mb-4">{item.description}</p>
-                <div className="flex gap-2 mb-4 print:hidden">
-                  <button onClick={()=>setChecklist(checklist.map(i=>i.id===item.id?{...i, status:'compliant'}:i))} className={`flex-1 p-3 rounded-xl text-[10px] font-black ${item.status==='compliant'?'bg-emerald-600 text-white shadow-lg':'bg-gray-100 text-gray-400'}`}>CONFORME</button>
-                  <button onClick={()=>setChecklist(checklist.map(i=>i.id===item.id?{...i, status:'non-compliant'}:i))} className={`flex-1 p-3 rounded-xl text-[10px] font-black ${item.status==='non-compliant'?'bg-red-600 text-white shadow-lg':'bg-gray-100 text-gray-400'}`}>NO CONFORME</button>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <textarea placeholder="Hallazgos..." className={inputStyle + " md:col-span-2"} value={item.notes} onChange={e=>setChecklist(checklist.map(i=>i.id===item.id?{...i, notes:e.target.value}:i))} />
-                  <div className="border-2 border-dashed border-gray-200 rounded-2xl flex items-center justify-center bg-gray-50 min-h-[100px] relative">
-                    {item.photo ? (
-                      <><img src={item.photo} className="h-full w-full object-cover rounded-xl" /><button onClick={()=>setChecklist(checklist.map(i=>i.id===item.id?{...i, photo:null}:i))} className="absolute top-2 right-2 bg-red-600 text-white p-1 rounded-full"><Trash2 size={12}/></button></>
-                    ) : (
-                      <label className="cursor-pointer flex flex-col items-center text-gray-400 print:hidden"><Camera size={24}/><span className="text-[9px] font-black mt-1">CÁMARA</span><input type="file" accept="image/*" capture="camera" className="hidden" onChange={e=>handleImg(item.id, e)} /></label>
-                    )}
+            {checklist.length > 0 && (
+              <div className="bg-white border rounded-[2rem] overflow-hidden shadow-sm divide-y print:border-none print:shadow-none">
+                {checklist.map(item => (
+                  <div key={item.id} className="p-6 hover:bg-gray-50 transition-colors print:break-inside-avoid print:py-4">
+                    <p className="text-sm font-bold text-gray-700 mb-4 leading-relaxed">{item.description}</p>
+                    <div className="flex gap-2 mb-4 print:hidden">
+                      <button onClick={()=>setChecklist(checklist.map(i=>i.id===item.id?{...i, status:'compliant'}:i))} className={`flex-1 p-3 rounded-xl text-[10px] font-black uppercase ${item.status==='compliant'?'bg-emerald-600 text-white shadow-lg':'bg-gray-100 text-gray-400'}`}>CONFORME</button>
+                      <button onClick={()=>setChecklist(checklist.map(i=>i.id===item.id?{...i, status:'non-compliant'}:i))} className={`flex-1 p-3 rounded-xl text-[10px] font-black uppercase ${item.status==='non-compliant'?'bg-red-600 text-white shadow-lg':'bg-gray-100 text-gray-400'}`}>NO CONFORME</button>
+                    </div>
+                    <div className="hidden print:block font-bold text-xs mb-2 italic">
+                        RESULTADO: {item.status === 'compliant' ? '✅ CONFORME' : item.status === 'non-compliant' ? '❌ NO CONFORME' : '---'}
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="md:col-span-2 flex flex-col"><span className="text-[10px] uppercase font-bold text-gray-400 print:hidden">Observaciones</span><textarea className={inputStyle + " h-20"} value={item.notes} onChange={e=>setChecklist(checklist.map(i=>i.id===item.id?{...i, notes:e.target.value}:i))} /></div>
+                      <div className="border-2 border-dashed border-gray-200 rounded-2xl flex items-center justify-center bg-gray-50 min-h-[100px] relative print:border-none">
+                        {item.photo ? (
+                          <><img src={item.photo} className="h-full w-full object-cover rounded-xl print:max-h-32" /><button onClick={()=>setChecklist(checklist.map(i=>i.id===item.id?{...i, photo:null}:i))} className="absolute top-2 right-2 bg-red-600 text-white p-1 rounded-full print:hidden"><Trash2 size={12}/></button></>
+                        ) : (
+                          <label className="cursor-pointer flex flex-col items-center text-gray-400 print:hidden"><Camera size={24}/><input type="file" accept="image/*" capture="camera" className="hidden" onChange={e=>handleImg(item.id, e)} /></label>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                </div>
+                ))}
               </div>
-            ))}
+            )}
+            
             {auditInfo.sopId && (
-              <section className="bg-white p-8 rounded-3xl shadow-sm border border-emerald-100">
-                <h3 className="text-[10px] font-black text-emerald-700 uppercase mb-4 flex items-center gap-2"><PenTool size={14}/> Dictamen Técnico del Consultor</h3>
-                <textarea className={inputStyle + " h-32"} value={auditInfo.conclusion} onChange={e=>setAuditInfo({...auditInfo, conclusion:e.target.value})} />
+              <section className="bg-white p-8 rounded-3xl shadow-sm border border-emerald-100 print:border-none print:shadow-none">
+                <h3 className="text-[10px] font-black text-emerald-700 uppercase mb-4 flex items-center gap-2"><PenTool size={14}/> Dictamen Técnico Final (Consultoría)</h3>
+                <textarea className={inputStyle + " h-32 print:h-auto print:italic"} value={auditInfo.conclusion} onChange={e=>setAuditInfo({...auditInfo, conclusion:e.target.value})} />
               </section>
             )}
-          </div>
-        ) : (
-          <div className="space-y-6">
-            <div className={`p-12 rounded-[3.5rem] text-center shadow-2xl ${stats.score>=85?'bg-emerald-900 text-white':stats.score>=55?'bg-amber-500 text-white':'bg-red-700 text-white'}`}>
-              <h2 className="text-8xl font-black">{stats.score}%</h2>
+        </div>
+
+        {/* DASHBOARD: Siempre visible en impresión */}
+        <div className={`${activeTab === 'dashboard' ? 'block' : 'hidden print:block'} space-y-6 print:break-before-page print:mt-10`}>
+            <div className={`p-12 rounded-[3.5rem] text-center shadow-2xl print:shadow-none print:border-2 ${stats.score>=85?'bg-emerald-900 text-white print:border-emerald-900 print:text-emerald-900':stats.score>=55?'bg-amber-500 text-white print:border-amber-500 print:text-amber-500':'bg-red-700 text-white print:border-red-700 print:text-red-700'}`}>
+              <h2 className="text-8xl font-black print:text-5xl">{stats.score}%</h2>
               <p className="uppercase text-[10px] font-bold tracking-[0.4em] opacity-80 mt-2">Cumplimiento Global</p>
             </div>
-            <table className="w-full text-left text-xs bg-white rounded-3xl border overflow-hidden shadow-sm">
-              <thead className="bg-gray-100 font-black border-b">
-                <tr><th className="p-5">Rango</th><th className="p-5">Criterio</th><th className="p-5 text-right">Plazo</th></tr>
-              </thead>
-              <tbody className="font-bold divide-y">
-                <tr className={stats.score<=54?'bg-red-50 text-red-700':''}><td className="p-5">0% - 54%</td><td className="p-5">No cumple</td><td className="p-5 text-right">2 Meses</td></tr>
-                <tr className={stats.score>=55&&stats.score<=84?'bg-amber-50 text-amber-700':''}><td className="p-5">55% - 84%</td><td className="p-5">Parcial</td><td className="p-5 text-right">6 Meses</td></tr>
-                <tr className={stats.score>=85?'bg-emerald-50 text-emerald-700':''}><td className="p-5">85% - 100%</td><td className="p-5">Cumple</td><td className="p-5 text-right">1 Año</td></tr>
-              </tbody>
-            </table>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+            <div className="bg-white rounded-[2.5rem] border border-gray-100 overflow-hidden shadow-sm print:border-none print:shadow-none">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-gray-100 font-black text-gray-400 uppercase border-b">
+                  <tr><th className="p-5">Rango</th><th className="p-5">Criterio</th><th className="p-5 text-right">Plazo Seguimiento</th></tr>
+                </thead>
+                <tbody className="font-bold divide-y divide-gray-50">
+                  <tr className={stats.score <= 54 ? 'bg-red-600 text-white' : 'text-red-600'}> 
+                    <td className="p-5">0% - 54%</td><td className="p-5 uppercase">No cumple</td><td className="p-5 text-right">2 Meses</td> 
+                  </tr>
+                  <tr className={(stats.score >= 55 && stats.score <= 84) ? 'bg-amber-500 text-white' : 'text-amber-600'}> 
+                    <td className="p-5">55% - 84%</td><td className="p-5 uppercase">Parcial</td><td className="p-5 text-right">6 Meses</td> 
+                  </tr>
+                  <tr className={stats.score >= 85 ? 'bg-emerald-600 text-white' : 'text-emerald-700'}> 
+                    <td className="p-5">85% - 100%</td><td className="p-5 uppercase">Cumple</td><td className="p-5 text-right">1 Año (Anual)</td> 
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-10">
               <SignaturePad label="Firma Auditor Responsable" savedImage={auditInfo.sigAuditor} onSave={img=>setAuditInfo({...auditInfo, sigAuditor:img})} />
               <SignaturePad label="Firma Operario Auditado" savedImage={auditInfo.sigOperator} onSave={img=>setAuditInfo({...auditInfo, sigOperator:img})} />
             </div>
           </div>
-        )}
       </main>
+      <footer className="p-10 text-center text-[9px] font-black text-emerald-800 bg-emerald-50 uppercase tracking-[0.4em] border-t print:hidden">Diseñada por Nicolás S. Acosta & Gemini</footer>
     </div>
   );
 };
+
 export default App;
