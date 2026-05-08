@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { CheckCircle, XCircle, AlertTriangle, BarChart2, List, Printer, FilePlus, AlertOctagon, Trash2, BookOpen, ImageIcon, Settings, Plus, PenTool, Camera } from 'lucide-react';
 
-// --- COMPONENTE DE FIRMA (SOPORTE TÁCTIL) ---
 const SignaturePad = ({ label, onSave, savedImage }) => {
   const canvasRef = useRef(null);
   const [isDrawing, setIsDrawing] = useState(false);
@@ -28,7 +27,7 @@ const SignaturePad = ({ label, onSave, savedImage }) => {
   const stop = () => { if (isDrawing) { setIsDrawing(false); onSave(canvasRef.current.toDataURL()); } };
 
   return (
-    <div className="flex flex-col items-center p-4 border-2 border-gray-100 rounded-3xl bg-white w-full">
+    <div className="flex flex-col items-center p-4 border-2 border-gray-100 rounded-3xl bg-white w-full shadow-sm">
       <span className="text-[10px] font-black uppercase mb-3 text-emerald-800 tracking-widest">{label}</span>
       {savedImage ? (
         <div className="relative w-full h-32 flex items-center justify-center border rounded-xl bg-gray-50">
@@ -42,9 +41,6 @@ const SignaturePad = ({ label, onSave, savedImage }) => {
   );
 };
 
-// ==========================================
-// BASE DE DATOS MADRE (ORIGINAL SIN RECORTES)
-// ==========================================
 const initialSopDatabase = [
   {
     id: 'AG-IN-3', code: 'AG-IN-3', title: 'Control de Strategus aloeus', area: 'Agronomía (Campo)',
@@ -137,15 +133,18 @@ const initialSopDatabase = [
 
 const App = () => {
   const [activeTab, setActiveTab] = useState('checklist');
-  const [auditInfo, setAuditInfo] = useState({ farmName:'', lotArea:'', auditorName:'', operatorName:'', date: new Date().toISOString().split('T')[0], sopId:'', conclusion:'', sigAuditor:null, sigOperator:null });
+  const [auditInfo, setAuditInfo] = useState({ 
+    farmName:'', lotArea:'', auditorName:'', operatorName:'', 
+    date: new Date().toISOString().split('T')[0], sopId:'', conclusion:'', sigAuditor:null, sigOperator:null 
+  });
   const [checklist, setChecklist] = useState([]);
 
   useEffect(() => {
-    const saved = localStorage.getItem('audit_final_vMaster');
+    const saved = localStorage.getItem('audit_master_final_v105');
     if (saved) { const p = JSON.parse(saved); setAuditInfo(p.auditInfo); setChecklist(p.checklist); }
   }, []);
 
-  useEffect(() => { localStorage.setItem('audit_final_vMaster', JSON.stringify({ auditInfo, checklist })); }, [auditInfo, checklist]);
+  useEffect(() => { localStorage.setItem('audit_master_final_v105', JSON.stringify({ auditInfo, checklist })); }, [auditInfo, checklist]);
 
   const handleSop = (id) => {
     const s = initialSopDatabase.find(x => x.id === id);
@@ -162,9 +161,9 @@ const App = () => {
   };
 
   const stats = (() => {
-    const evaluated = checklist.filter(i => i.status !== 'pending').length;
+    const evalItems = checklist.filter(i => i.status !== 'pending').length;
     const ok = checklist.filter(i => i.status === 'compliant').length;
-    return { score: evaluated > 0 ? Math.round((ok / evaluated) * 100) : 0 };
+    return { score: evalItems > 0 ? Math.round((ok / evalItems) * 100) : 0 };
   })();
 
   const inputStyle = "p-3 border border-gray-300 rounded-xl bg-white text-gray-900 w-full text-sm outline-none focus:ring-2 focus:ring-emerald-500";
@@ -181,7 +180,7 @@ const App = () => {
         </div>
       </header>
 
-      <main className="max-w-4xl mx-auto p-4 w-full flex-grow">
+      <main className="max-w-5xl mx-auto p-4 w-full flex-grow">
         
         {/* VISTA CHECKLIST */}
         <div className={`${activeTab === 'checklist' ? 'block' : 'hidden print:block'} space-y-6`}>
@@ -196,10 +195,11 @@ const App = () => {
                 {initialSopDatabase.find(s => s.id === auditInfo.sopId)?.code} - {initialSopDatabase.find(s => s.id === auditInfo.sopId)?.title}
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="flex flex-col"><span className="text-[10px] uppercase font-bold text-gray-400">Fecha de Diligenciamiento</span><input type="date" className={inputStyle} value={auditInfo.date} onChange={e=>setAuditInfo({...auditInfo, date:e.target.value})} /></div>
                 <div className="flex flex-col"><span className="text-[10px] uppercase font-bold text-gray-400">Finca / Planta</span><input type="text" className={inputStyle} value={auditInfo.farmName} onChange={e=>setAuditInfo({...auditInfo, farmName:e.target.value})} /></div>
                 <div className="flex flex-col"><span className="text-[10px] uppercase font-bold text-gray-400">Lote / Área</span><input type="text" className={inputStyle} value={auditInfo.lotArea} onChange={e=>setAuditInfo({...auditInfo, lotArea:e.target.value})} /></div>
                 <div className="flex flex-col"><span className="text-[10px] uppercase font-bold text-gray-400">Auditor Responsable</span><input type="text" className={inputStyle} value={auditInfo.auditorName} onChange={e=>setAuditInfo({...auditInfo, auditorName:e.target.value})} /></div>
-                <div className="flex flex-col"><span className="text-[10px] uppercase font-bold text-gray-400">Operario Auditado</span><input type="text" className={inputStyle} value={auditInfo.operatorName} onChange={e=>setAuditInfo({...auditInfo, operatorName:e.target.value})} /></div>
+                <div className="flex flex-col md:col-span-2"><span className="text-[10px] uppercase font-bold text-gray-400">Operario Auditado</span><input type="text" className={inputStyle} value={auditInfo.operatorName} onChange={e=>setAuditInfo({...auditInfo, operatorName:e.target.value})} /></div>
               </div>
             </section>
 
@@ -209,8 +209,8 @@ const App = () => {
                   <div key={item.id} className="p-6 hover:bg-gray-50 transition-colors print:break-inside-avoid print:py-4">
                     <p className="text-sm font-bold text-gray-700 mb-4 leading-relaxed">{item.description}</p>
                     <div className="flex gap-2 mb-4 print:hidden">
-                      <button onClick={()=>setChecklist(checklist.map(i=>i.id===item.id?{...i, status:'compliant'}:i))} className={`flex-1 p-3 rounded-xl text-[10px] font-black ${item.status==='compliant'?'bg-emerald-600 text-white shadow-lg':'bg-gray-100 text-gray-400'}`}>CONFORME</button>
-                      <button onClick={()=>setChecklist(checklist.map(i=>i.id===item.id?{...i, status:'non-compliant'}:i))} className={`flex-1 p-3 rounded-xl text-[10px] font-black ${item.status==='non-compliant'?'bg-red-600 text-white shadow-lg':'bg-gray-100 text-gray-400'}`}>NO CONFORME</button>
+                      <button onClick={()=>setChecklist(checklist.map(i=>i.id===item.id?{...i, status:'compliant'}:i))} className={`flex-1 p-3 rounded-xl text-[10px] font-black uppercase ${item.status==='compliant'?'bg-emerald-600 text-white shadow-lg':'bg-gray-100 text-gray-400'}`}>CONFORME</button>
+                      <button onClick={()=>setChecklist(checklist.map(i=>i.id===item.id?{...i, status:'non-compliant'}:i))} className={`flex-1 p-3 rounded-xl text-[10px] font-black uppercase ${item.status==='non-compliant'?'bg-red-600 text-white shadow-lg':'bg-gray-100 text-gray-400'}`}>NO CONFORME</button>
                     </div>
                     <div className="hidden print:block font-bold text-xs mb-2 italic">
                         RESULTADO: {item.status === 'compliant' ? '✅ CONFORME' : item.status === 'non-compliant' ? '❌ NO CONFORME' : '---'}
@@ -219,9 +219,9 @@ const App = () => {
                       <div className="md:col-span-2 flex flex-col"><span className="text-[10px] uppercase font-bold text-gray-400 print:hidden">Observaciones</span><textarea className={inputStyle + " h-20"} value={item.notes} onChange={e=>setChecklist(checklist.map(i=>i.id===item.id?{...i, notes:e.target.value}:i))} /></div>
                       <div className="border-2 border-dashed border-gray-200 rounded-2xl flex items-center justify-center bg-gray-50 min-h-[100px] relative print:border-none">
                         {item.photo ? (
-                          <><img src={item.photo} className="h-full w-full object-cover rounded-xl" /><button onClick={()=>setChecklist(checklist.map(i=>i.id===item.id?{...i, photo:null}:i))} className="absolute top-2 right-2 bg-red-600 text-white p-1 rounded-full print:hidden"><Trash2 size={12}/></button></>
+                          <><img src={item.photo} className="h-full w-full object-cover rounded-xl print:max-h-32" /><button onClick={()=>setChecklist(checklist.map(i=>i.id===item.id?{...i, photo:null}:i))} className="absolute top-2 right-2 bg-red-600 text-white p-1 rounded-full print:hidden"><Trash2 size={12}/></button></>
                         ) : (
-                          <label className="cursor-pointer flex flex-col items-center text-gray-400 print:hidden"><Camera size={24}/><input type="file" accept="image/*" capture="camera" className="hidden" onChange={e=>{const r=new FileReader(); r.onload=(ev)=>setChecklist(prev=>prev.map(i=>i.id===item.id?{...i, photo:ev.target.result}:i)); r.readAsDataURL(e.target.files[0]);}} /></label>
+                          <label className="cursor-pointer flex flex-col items-center text-gray-400 print:hidden"><Camera size={24}/><input type="file" accept="image/*" capture="camera" className="hidden" onChange={e=>handleImg(item.id, e)} /></label>
                         )}
                       </div>
                     </div>
@@ -270,7 +270,7 @@ const App = () => {
             </div>
           </div>
       </main>
-      <footer className="p-10 text-center text-[9px] font-black text-emerald-800 bg-emerald-50 uppercase tracking-[0.4em] border-t print:hidden">Diseñada por Nicolás S. Acosta · Consultoría Técnica</footer>
+      <footer className="p-10 text-center text-[9px] font-black text-emerald-800 bg-emerald-50 uppercase tracking-[0.4em] border-t print:hidden">Diseñada por Nicolás S. Acosta & Gemini</footer>
     </div>
   );
 };
