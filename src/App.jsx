@@ -2,15 +2,18 @@ import React, { useState, useEffect, useRef } from 'react';
 import { CheckCircle, XCircle, AlertTriangle, BarChart2, List, Printer, FilePlus, AlertOctagon, Trash2, BookOpen, ImageIcon, Settings, Plus, PenTool, Camera } from 'lucide-react';
 
 // --- COMPONENTE DE FIRMA ---
-const SignaturePad = ({ label, onSave, savedImage }) => {
+const SignaturePad = ({ label, onSave, savedImage, onImageUpload }) => {
   const canvasRef = useRef(null);
+  const fileInputRef = useRef(null);
   const [isDrawing, setIsDrawing] = useState(false);
+  
   const getPos = (e) => {
     const rect = canvasRef.current.getBoundingClientRect();
     const x = (e.clientX || e.touches[0].clientX) - rect.left;
     const y = (e.clientY || e.touches[0].clientY) - rect.top;
     return { x, y };
   };
+  
   const start = (e) => {
     const { x, y } = getPos(e);
     const ctx = canvasRef.current.getContext('2d');
@@ -18,6 +21,7 @@ const SignaturePad = ({ label, onSave, savedImage }) => {
     ctx.beginPath(); ctx.moveTo(x, y);
     setIsDrawing(true);
   };
+  
   const move = (e) => {
     if (!isDrawing) return;
     const { x, y } = getPos(e);
@@ -25,19 +29,65 @@ const SignaturePad = ({ label, onSave, savedImage }) => {
     canvasRef.current.getContext('2d').stroke();
     if (e.touches) e.preventDefault();
   };
+  
   const stop = () => { if (isDrawing) { setIsDrawing(false); onSave(canvasRef.current.toDataURL()); } };
+  
+  const handleImageUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        onImageUpload(event.target.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   return (
-    <div className="flex flex-col items-center p-4 border-2 border-gray-100 rounded-3xl bg-white w-full">
+    <div className="flex flex-col items-center p-4 border-2 border-gray-100 rounded-3xl bg-white w-full print:border-gray-300 print:p-2">
       <span className="text-[10px] font-black uppercase mb-3 text-emerald-800 tracking-widest">{label}</span>
       {savedImage ? (
-        <div className="relative w-full h-32 flex items-center justify-center border rounded-xl bg-gray-50">
-          <img src={savedImage} className="max-h-full" alt="Firma" />
-          <button onClick={() => onSave(null)} className="absolute top-1 right-1 bg-red-100 text-red-600 p-1 rounded-full print:hidden"><Trash2 size={12}/></button>
+        <div className="relative w-full h-40 flex items-center justify-center border rounded-xl bg-gray-50 print:h-32 print:border-gray-300">
+          <img src={savedImage} className="max-h-full max-w-full object-contain" alt="Firma" style={{maxHeight: '100%', maxWidth: '100%'}} />
+          <div className="absolute top-1 right-1 print:hidden flex gap-1">
+            <button onClick={() => onSave(null)} className="bg-red-100 text-red-600 p-1 rounded-full hover:bg-red-200">
+              <Trash2 size={12}/>
+            </button>
+            <button onClick={() => fileInputRef.current.click()} className="bg-blue-100 text-blue-600 p-1 rounded-full hover:bg-blue-200">
+              <ImageIcon size={12}/>
+            </button>
+          </div>
         </div>
       ) : (
-        <canvas ref={canvasRef} width={300} height={120} onMouseDown={start} onMouseMove={move} onMouseUp={stop} onTouchStart={start} onTouchMove={move} onTouchEnd={stop} className="border rounded-lg w-full touch-none bg-gray-50" />
+        <div className="w-full">
+          <canvas 
+            ref={canvasRef} 
+            width={300} 
+            height={120} 
+            onMouseDown={start} 
+            onMouseMove={move} 
+            onMouseUp={stop} 
+            onTouchStart={start} 
+            onTouchMove={move} 
+            onTouchEnd={stop} 
+            className="border rounded-lg w-full touch-none bg-gray-50 print:hidden" 
+          />
+          <button 
+            type="button"
+            onClick={() => fileInputRef.current.click()} 
+            className="w-full mt-2 p-2 bg-blue-50 text-blue-600 rounded-lg text-xs font-bold hover:bg-blue-100 print:hidden flex items-center justify-center gap-2"
+          >
+            <ImageIcon size={14}/> O cargar imagen de firma
+          </button>
+        </div>
       )}
+      <input 
+        type="file" 
+        ref={fileInputRef} 
+        onChange={handleImageUpload} 
+        accept="image/*" 
+        className="hidden"
+      />
     </div>
   );
 };
@@ -166,7 +216,8 @@ const App = () => {
   const [activeTab, setActiveTab] = useState('checklist');
   const [auditInfo, setAuditInfo] = useState({ 
     farmName:'', lotArea:'', auditorName:'', operatorName:'', 
-    date: new Date().toISOString().split('T')[0], sopId:'', conclusion:'', sigAuditor:null, sigOperator:null 
+    date: new Date().toISOString().split('T')[0], sopId:'', conclusion:'', 
+    sigAuditor:null, sigOperator:null, sigJohanna:null, sigNicolas:null 
   });
   const [checklist, setChecklist] = useState([]);
   const [auditHistory, setAuditHistory] = useState([]);
@@ -369,7 +420,18 @@ const App = () => {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-10">
-              <SignaturePad label="Firma Auditor Responsable" savedImage={auditInfo.sigAuditor} onSave={img=>setAuditInfo({...auditInfo, sigAuditor:img})} />
+              <SignaturePad 
+                label="Firma: Johanna López" 
+                savedImage={auditInfo.sigJohanna} 
+                onSave={img=>setAuditInfo({...auditInfo, sigJohanna:img})}
+                onImageUpload={img=>setAuditInfo({...auditInfo, sigJohanna:img})}
+              />
+              <SignaturePad 
+                label="Firma: Nicolas Acosta TR" 
+                savedImage={auditInfo.sigNicolas} 
+                onSave={img=>setAuditInfo({...auditInfo, sigNicolas:img})}
+                onImageUpload={img=>setAuditInfo({...auditInfo, sigNicolas:img})}
+              />
             </div>
             <button onClick={saveToHistory} className="mt-8 w-full p-4 bg-emerald-600 text-white font-black rounded-2xl uppercase hover:bg-emerald-700 transition-colors">💾 Guardar al Historial</button>
           </div>

@@ -1,3 +1,49 @@
+/* ===== ESTILOS DE IMPRESIÓN ===== */
+@media print {
+  * {
+    margin: 0 !important;
+    padding: 0 !important;
+    box-sizing: border-box !important;
+  }
+
+  body {
+    background: white !important;
+  }
+
+  /* Evitar que se corten las imágenes */
+  img {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    max-height: 100% !important;
+    max-width: 100% !important;
+    object-fit: contain !important;
+  }
+
+  /* Firmas: no se corten */
+  [class*="SignaturePad"],
+  .flex.flex-col.items-center.p-4.border-2 {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  /* Tablas no se corten */
+  table {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  /* Secciones no se corten */
+  section, .rounded-3xl, .border {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  /* Eliminar sombras en impresión */
+  * {
+    box-shadow: none !important;
+  }
+}
+
 .counter {
   font-size: 16px;
   padding: 5px 10px;
