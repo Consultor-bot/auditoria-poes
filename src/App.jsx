@@ -130,6 +130,35 @@ const initialSopDatabase = [
       { id: 'c6', d: '6. Se despresuriza completamente (condensados, vapor, venteo) antes de proceder a desocupar.' },
       { id: 'c7', d: '7. El operario diligencia oportunamente el formato de control de esterilización (PB-FO-04).' }
     ]
+  },
+  {
+    id: 'PB-IN-15', code: 'PB-IN-15', title: 'Esterilización Línea 2', area: 'Planta Extractora (Molino)',
+    criteria: [
+      { id: 'c1', d: '1. El operario conoce el objetivo y alcance del procedimiento.' },
+      { id: 'c2', d: '2. El personal entrevistado conoce sus responsabilidades dentro del proceso de esterilización.' },
+      { id: 'c3', d: '3. Antes de iniciar operaciones se verifica que no haya personal trabajando en los redlers.' },
+      { id: 'c4', d: '4. El operario realiza el requerimiento de fruto de acuerdo con el procedimiento.' },
+      { id: 'c5', d: '5. Se solicita al CCM el encendido de redlers y sinfines antes del llenado.' },
+      { id: 'c6', d: '6. Se verifica ausencia de personal en el área antes de poner en marcha los equipos.' },
+      { id: 'c7', d: '7. La secuencia de llenado de esterilizadores es activada desde CCM.' },
+      { id: 'c8', d: '8. Las compuertas de salida de tolvas hacia redler se encuentran operativas.' },
+      { id: 'c9', d: '9. El esterilizador se llena adecuadamente con fruto fresco.' },
+      { id: 'c10', d: '10. Las puertas del esterilizador se encuentran cerradas durante la operación.' },
+      { id: 'c11', d: '11. Se verifica el estado de empaques y sellos antes de iniciar el ciclo.' },
+      { id: 'c12', d: '12. Los seguros de las puertas se encuentran colocados correctamente.' },
+      { id: 'c13', d: '13. El ciclo de esterilización se ejecuta conforme al instructivo PB-IN-03.' },
+      { id: 'c14', d: '14. El tiempo de esterilización corresponde a la ficha técnica de madurez AG-FT-01.' },
+      { id: 'c15', d: '15. El operario conoce los criterios para ajustar los tiempos de esterilización según la madurez del fruto.' },
+      { id: 'c16', d: '16. El formato PB-FO-4 Control Esterilización se diligencia correctamente.' },
+      { id: 'c17', d: '17. Los registros incluyen fecha, hora, lote y parámetros operativos.' },
+      { id: 'c18', d: '18. Al finalizar el ciclo se retiran los seguros de forma segura.' },
+      { id: 'c19', d: '19. La apertura de puertas se realiza una vez finalizado completamente el ciclo.' },
+      { id: 'c20', d: '20. Se activa la secuencia de llenado de la tolva pulmón para descarga del fruto esterilizado.' },
+      { id: 'c21', d: '21. El fruto esterilizado es descargado completamente del esterilizador.' },
+      { id: 'c22', d: '22. Se realiza limpieza del cuello del esterilizador después de cada descarga.' },
+      { id: 'c23', d: '23. No se observan remanentes de fruto antes de iniciar un nuevo ciclo.' },
+      { id: 'c24', d: '24. La puerta inferior es cerrada antes de iniciar el nuevo llenado.' }
+    ]
   }
 ];
 
@@ -140,13 +169,17 @@ const App = () => {
     date: new Date().toISOString().split('T')[0], sopId:'', conclusion:'', sigAuditor:null, sigOperator:null 
   });
   const [checklist, setChecklist] = useState([]);
+  const [auditHistory, setAuditHistory] = useState([]);
 
   useEffect(() => {
     const saved = localStorage.getItem('audit_master_final_v110');
     if (saved) { const p = JSON.parse(saved); setAuditInfo(p.auditInfo); setChecklist(p.checklist); }
+    const history = localStorage.getItem('audit_history_v110');
+    if (history) { setAuditHistory(JSON.parse(history)); }
   }, []);
 
   useEffect(() => { localStorage.setItem('audit_master_final_v110', JSON.stringify({ auditInfo, checklist })); }, [auditInfo, checklist]);
+  useEffect(() => { localStorage.setItem('audit_history_v110', JSON.stringify(auditHistory)); }, [auditHistory]);
 
   const handleSop = (id) => {
     const s = initialSopDatabase.find(x => x.id === id);
@@ -162,21 +195,96 @@ const App = () => {
     return { score: evalItems > 0 ? Math.round((ok / evalItems) * 100) : 0 };
   })();
 
+  const saveToHistory = () => {
+    if (!auditInfo.sopId || !auditInfo.farmName) {
+      alert('Completa los datos de finca y procedimiento antes de guardar');
+      return;
+    }
+    const newRecord = {
+      id: Date.now(),
+      timestamp: new Date().toLocaleString('es-CO'),
+      sopCode: initialSopDatabase.find(s => s.id === auditInfo.sopId)?.code,
+      sopTitle: initialSopDatabase.find(s => s.id === auditInfo.sopId)?.title,
+      farmName: auditInfo.farmName,
+      lotArea: auditInfo.lotArea,
+      auditorName: auditInfo.auditorName,
+      date: auditInfo.date,
+      score: stats.score,
+      checklist: checklist,
+      conclusion: auditInfo.conclusion,
+      sigAuditor: auditInfo.sigAuditor
+    };
+    setAuditHistory([newRecord, ...auditHistory]);
+    alert('Auditoría guardada en el historial');
+  };
+
+  const downloadPDF = (record) => {
+    const element = document.createElement('div');
+    element.innerHTML = `
+      <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
+        <h2 style="text-align: center; color: #059669; border-bottom: 2px solid #059669; padding-bottom: 10px;">Seguimiento POES</h2>
+        <p><strong>Fecha de generación:</strong> ${record.timestamp}</p>
+        <p><strong>Procedimiento:</strong> ${record.sopCode} - ${record.sopTitle}</p>
+        <p><strong>Finca/Planta:</strong> ${record.farmName}</p>
+        <p><strong>Lote/Área:</strong> ${record.lotArea}</p>
+        <p><strong>Auditor:</strong> ${record.auditorName}</p>
+        <p><strong>Fecha de auditoría:</strong> ${record.date}</p>
+        <hr style="margin: 20px 0; border: none; border-top: 1px solid #ccc;">
+        <h3 style="color: #059669;">Puntuación Global: ${record.score}%</h3>
+        <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
+          <thead>
+            <tr style="background-color: #f0f0f0;">
+              <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Criterio</th>
+              <th style="border: 1px solid #ddd; padding: 8px; text-align: center;">Estado</th>
+              <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Observaciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${record.checklist.map(item => `
+              <tr>
+                <td style="border: 1px solid #ddd; padding: 8px;">${item.description}</td>
+                <td style="border: 1px solid #ddd; padding: 8px; text-align: center; font-weight: bold; color: ${item.status === 'compliant' ? '#059669' : item.status === 'non-compliant' ? '#dc2626' : '#999'}">
+                  ${item.status === 'compliant' ? '✅ CONFORME' : item.status === 'non-compliant' ? '❌ NO CONFORME' : '---'}
+                </td>
+                <td style="border: 1px solid #ddd; padding: 8px;">${item.notes || '-'}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+        <hr style="margin: 20px 0; border: none; border-top: 1px solid #ccc;">
+        <h3>Dictamen Técnico:</h3>
+        <p>${record.conclusion || 'Sin observaciones'}</p>
+        <p style="margin-top: 30px; font-size: 12px; color: #999; text-align: center;">Generado por Seguimiento POES · ${new Date().toLocaleDateString('es-CO')}</p>
+      </div>
+    `;
+    const printWindow = window.open('', '', 'width=900,height=600');
+    printWindow.document.write(element.innerHTML);
+    printWindow.document.close();
+    printWindow.print();
+  };
+
   const inputStyle = "p-3 border border-gray-300 rounded-xl bg-white text-gray-900 w-full text-sm outline-none focus:ring-2 focus:ring-emerald-500";
 
   return (
     <div className="min-h-screen bg-gray-50 text-gray-900 flex flex-col font-sans">
       <header className="bg-emerald-800 text-white p-4 sticky top-0 z-50 flex justify-between items-center shadow-lg print:hidden">
-        <h1 className="font-bold text-sm uppercase tracking-tighter flex items-center gap-2"><BookOpen size={20}/> Auditoría RSPO</h1>
+        <h1 className="font-bold text-sm uppercase tracking-tighter flex items-center gap-2"><BookOpen size={20}/> Seguimientos POES</h1>
         <div className="flex gap-2">
           <button onClick={() => setActiveTab('checklist')} className={`p-2 rounded-lg ${activeTab==='checklist'?'bg-white text-emerald-800 shadow-md':'bg-emerald-700'}`}><List size={20}/></button>
           <button onClick={() => setActiveTab('dashboard')} className={`p-2 rounded-lg ${activeTab==='dashboard'?'bg-white text-emerald-800 shadow-lg':'bg-emerald-700'}`}><BarChart2 size={20}/></button>
+          <button onClick={() => setActiveTab('history')} className={`p-2 rounded-lg relative ${activeTab==='history'?'bg-white text-emerald-800 shadow-lg':'bg-emerald-700'}`}><BookOpen size={20}/>{auditHistory.length > 0 && <span className="absolute top-0 right-0 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">{auditHistory.length}</span>}</button>
           <button onClick={() => window.print()} className="p-2 bg-emerald-700 rounded-lg"><Printer size={20}/></button>
           <button onClick={() => {if(confirm("¿Nueva Auditoría?")) {localStorage.clear(); window.location.reload();}}} className="p-2 bg-red-600 rounded-lg"><FilePlus size={20}/></button>
         </div>
       </header>
 
       <main className="max-w-4xl mx-auto p-4 w-full flex-grow">
+        <div className="hidden print:block text-center mb-6 pb-4 border-b-2 border-emerald-800">
+          <h2 className="text-2xl font-black text-emerald-800 uppercase tracking-widest">Seguimiento POES</h2>
+        </div>
+        <div className="print:hidden mb-8">
+          <img src="/auditor-palma.jpg.png" alt="Cultivo de Palma" className="w-full h-64 object-cover rounded-2xl shadow-lg" />
+        </div>
         <div className={`${activeTab === 'checklist' ? 'block' : 'hidden print:block'} space-y-6`}>
             <section className="bg-white p-6 rounded-3xl shadow-sm border space-y-4 print:border-none print:shadow-none">
               <div className="print:hidden">
@@ -262,9 +370,46 @@ const App = () => {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-10">
               <SignaturePad label="Firma Auditor Responsable" savedImage={auditInfo.sigAuditor} onSave={img=>setAuditInfo({...auditInfo, sigAuditor:img})} />
-              <SignaturePad label="Firma Operario Auditado" savedImage={auditInfo.sigOperator} onSave={img=>setAuditInfo({...auditInfo, sigOperator:img})} />
             </div>
+            <button onClick={saveToHistory} className="mt-8 w-full p-4 bg-emerald-600 text-white font-black rounded-2xl uppercase hover:bg-emerald-700 transition-colors">💾 Guardar al Historial</button>
           </div>
+
+        <div className={`${activeTab === 'history' ? 'block' : 'hidden'} space-y-6`}>
+          <section className="bg-white p-8 rounded-3xl shadow-sm border border-emerald-100">
+            <h2 className="text-xl font-black text-emerald-800 uppercase mb-6 flex items-center gap-2"><BookOpen size={24}/> Historial de Auditorías</h2>
+            {auditHistory.length === 0 ? (
+              <p className="text-gray-500 text-center py-8">No hay auditorías guardadas aún</p>
+            ) : (
+              <div className="space-y-4">
+                {auditHistory.map(record => (
+                  <div key={record.id} className="border border-gray-200 rounded-2xl p-6 hover:shadow-md transition-shadow">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                      <div>
+                        <p className="text-[10px] font-black text-gray-400 uppercase">Procedimiento</p>
+                        <p className="font-bold text-emerald-800">{record.sopCode}</p>
+                        <p className="text-sm text-gray-600">{record.sopTitle}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-black text-gray-400 uppercase">Finca/Auditor</p>
+                        <p className="font-bold text-gray-800">{record.farmName}</p>
+                        <p className="text-sm text-gray-600">{record.auditorName}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-black text-gray-400 uppercase">Puntuación</p>
+                        <p className={`text-3xl font-black ${record.score >= 85 ? 'text-emerald-600' : record.score >= 55 ? 'text-amber-500' : 'text-red-600'}`}>{record.score}%</p>
+                        <p className="text-[10px] text-gray-500">{record.timestamp}</p>
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <button onClick={() => downloadPDF(record)} className="flex-1 p-2 bg-blue-600 text-white rounded-lg text-sm font-bold hover:bg-blue-700">📄 Descargar PDF</button>
+                      <button onClick={() => setAuditHistory(auditHistory.filter(a => a.id !== record.id))} className="p-2 bg-red-600 text-white rounded-lg text-sm font-bold hover:bg-red-700"><Trash2 size={18}/></button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+        </div>
       </main>
       <footer className="p-10 text-center text-[9px] font-black text-emerald-800 bg-emerald-50 uppercase tracking-[0.4em] border-t print:hidden">Diseñada por Nicolás S. Acosta · Consultoría Técnica</footer>
     </div>
