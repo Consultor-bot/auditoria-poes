@@ -18,6 +18,7 @@ if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('/sw.js', { scope: '/' })
       .then(registration => {
         console.log('✅ Service Worker registrado:', registration);
+        console.log('📡 App lista para funcionar sin internet');
 
         // Revisar actualizaciones periódicamente
         setInterval(() => {
@@ -31,30 +32,39 @@ if ('serviceWorker' in navigator) {
           newWorker.addEventListener('statechange', () => {
             if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
               // Nueva versión disponible
-              console.log('📢 Nueva versión disponible. Recarga para actualizar.');
+              console.log('📢 Nueva versión disponible');
               
-              // Mostrar notificación al usuario (opcional)
-              if (window.confirm('Nueva versión disponible. ¿Actualizar ahora?')) {
+              // Notificar al usuario (opcional)
+              const shouldUpdate = window.confirm('Hay una actualización disponible. ¿Descargarla ahora?');
+              if (shouldUpdate) {
                 newWorker.postMessage({ type: 'SKIP_WAITING' });
-                window.location.reload();
               }
             }
           });
         });
       })
       .catch(error => {
-        console.error('❌ Error al registrar Service Worker:', error);
+        console.error('⚠️ Error al registrar Service Worker:', error);
+        console.warn('La app funcionará pero sin soporte offline');
       });
 
     // Recargar cuando el SW toma control de una nueva versión
     navigator.serviceWorker.addEventListener('controllerchange', () => {
-      console.log('🔄 Service Worker actualizado. Recargando...');
-      window.location.reload();
+      console.log('🔄 Service Worker actualizado');
     });
   });
   
   // Listeners adicionales para diagnóstico
   navigator.serviceWorker.addEventListener('error', event => {
     console.error('❌ Error en Service Worker:', event.error);
+  });
+  
+  // Mostrar estado de conexión
+  window.addEventListener('online', () => {
+    console.log('🟢 Conexión establecida');
+  });
+  
+  window.addEventListener('offline', () => {
+    console.log('🔴 Sin conexión - La app sigue funcionando con caché');
   });
 }

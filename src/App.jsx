@@ -1,11 +1,21 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { CheckCircle, XCircle, AlertTriangle, BarChart2, List, Printer, FilePlus, AlertOctagon, Trash2, BookOpen, ImageIcon, Settings, Plus, PenTool, Camera } from 'lucide-react';
+import { PREESTABLISHED_SIGNATURES } from './signatures';
 
-// --- COMPONENTE DE FIRMA ---
+// --- COMPONENTE DE FIRMA CON SELECTOR ---
 const SignaturePad = ({ label, onSave, savedImage, onImageUpload }) => {
   const canvasRef = useRef(null);
   const fileInputRef = useRef(null);
   const [isDrawing, setIsDrawing] = useState(false);
+  const [showSelector, setShowSelector] = useState(!savedImage);
+  
+  const selectPreestablishedSignature = (signatureKey) => {
+    const signature = PREESTABLISHED_SIGNATURES[signatureKey];
+    if (signature) {
+      onImageUpload(signature.data);
+      setShowSelector(false);
+    }
+  };
   
   const getPos = (e) => {
     const rect = canvasRef.current.getBoundingClientRect();
@@ -38,6 +48,7 @@ const SignaturePad = ({ label, onSave, savedImage, onImageUpload }) => {
       const reader = new FileReader();
       reader.onload = (event) => {
         onImageUpload(event.target.result);
+        setShowSelector(false);
       };
       reader.readAsDataURL(file);
     }
@@ -46,19 +57,60 @@ const SignaturePad = ({ label, onSave, savedImage, onImageUpload }) => {
   return (
     <div className="flex flex-col items-center p-4 border-2 border-gray-100 rounded-3xl bg-white w-full print:border-gray-300 print:p-2">
       <span className="text-[10px] font-black uppercase mb-3 text-emerald-800 tracking-widest">{label}</span>
+      
       {savedImage ? (
         <div className="relative w-full h-40 flex items-center justify-center border rounded-xl bg-gray-50 print:h-32 print:border-gray-300">
           <img src={savedImage} className="max-h-full max-w-full object-contain" alt="Firma" style={{maxHeight: '100%', maxWidth: '100%'}} />
           <div className="absolute top-1 right-1 print:hidden flex gap-1">
-            <button onClick={() => onSave(null)} className="bg-red-100 text-red-600 p-1 rounded-full hover:bg-red-200">
+            <button onClick={() => { onSave(null); setShowSelector(true); }} className="bg-red-100 text-red-600 p-1 rounded-full hover:bg-red-200" title="Borrar firma">
               <Trash2 size={12}/>
             </button>
-            <button onClick={() => fileInputRef.current.click()} className="bg-blue-100 text-blue-600 p-1 rounded-full hover:bg-blue-200">
+            <button onClick={() => setShowSelector(true)} className="bg-blue-100 text-blue-600 p-1 rounded-full hover:bg-blue-200" title="Cambiar firma">
               <ImageIcon size={12}/>
             </button>
           </div>
         </div>
-      ) : (
+      ) : null}
+      
+      {showSelector && !savedImage ? (
+        <div className="w-full space-y-3 print:hidden">
+          <div className="text-center text-xs text-gray-600 font-bold mb-2">Seleccionar firma preestablecida:</div>
+          <div className="grid grid-cols-2 gap-2">
+            <button 
+              onClick={() => selectPreestablishedSignature('johanna')}
+              className="p-2 bg-emerald-50 border-2 border-emerald-200 rounded-lg text-xs font-bold text-emerald-700 hover:bg-emerald-100 transition"
+            >
+              📝 Johanna López
+            </button>
+            <button 
+              onClick={() => selectPreestablishedSignature('nicolas')}
+              className="p-2 bg-blue-50 border-2 border-blue-200 rounded-lg text-xs font-bold text-blue-700 hover:bg-blue-100 transition"
+            >
+              📝 Nicolas Acosta TR
+            </button>
+          </div>
+          
+          <div className="text-center text-[10px] text-gray-400 my-2">O</div>
+          
+          <button 
+            type="button"
+            onClick={() => fileInputRef.current.click()} 
+            className="w-full p-2 bg-amber-50 text-amber-600 rounded-lg text-xs font-bold hover:bg-amber-100 flex items-center justify-center gap-2 border-2 border-amber-200"
+          >
+            <ImageIcon size={14}/> Cargar imagen personalizada
+          </button>
+          
+          <button 
+            type="button"
+            onClick={() => setShowSelector(false)} 
+            className="w-full p-2 bg-gray-50 text-gray-600 rounded-lg text-xs font-bold hover:bg-gray-100 border-2 border-gray-200"
+          >
+            ✏️ Dibujar firma
+          </button>
+        </div>
+      ) : null}
+      
+      {!savedImage && !showSelector ? (
         <div className="w-full">
           <canvas 
             ref={canvasRef} 
@@ -72,15 +124,28 @@ const SignaturePad = ({ label, onSave, savedImage, onImageUpload }) => {
             onTouchEnd={stop} 
             className="border rounded-lg w-full touch-none bg-gray-50 print:hidden" 
           />
-          <button 
-            type="button"
-            onClick={() => fileInputRef.current.click()} 
-            className="w-full mt-2 p-2 bg-blue-50 text-blue-600 rounded-lg text-xs font-bold hover:bg-blue-100 print:hidden flex items-center justify-center gap-2"
-          >
-            <ImageIcon size={14}/> O cargar imagen de firma
-          </button>
+          <div className="flex gap-2 mt-2 print:hidden">
+            <button 
+              type="button"
+              onClick={() => setShowSelector(true)} 
+              className="flex-1 p-2 bg-emerald-50 text-emerald-600 rounded-lg text-xs font-bold hover:bg-emerald-100 border-2 border-emerald-200"
+            >
+              ← Volver a opciones
+            </button>
+            <button 
+              type="button"
+              onClick={() => { 
+                const ctx = canvasRef.current.getContext('2d');
+                ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+              }} 
+              className="flex-1 p-2 bg-red-50 text-red-600 rounded-lg text-xs font-bold hover:bg-red-100 border-2 border-red-200"
+            >
+              Limpiar
+            </button>
+          </div>
         </div>
-      )}
+      ) : null}
+      
       <input 
         type="file" 
         ref={fileInputRef} 
