@@ -376,7 +376,7 @@ const App = () => {
 
         <div className={`${activeTab === 'history' ? 'block' : 'hidden'} space-y-6`}>
           <section className="bg-white p-8 rounded-3xl shadow-sm border border-emerald-100">
-            <h2 className="text-xl font-black text-emerald-800 uppercase mb-6 flex items-center gap-2"><BookOpen size={24}/> Historial de Auditorías</h2>
+            <h2 className="text-xl font-black text-emerald-800 uppercase mb-6 flex items-center gap-2"><BookOpen size={24}/> Historial de Seguimientos</h2>
             {auditHistory.length === 0 ? (
               <p className="text-gray-500 text-center py-8">No hay auditorías guardadas aún</p>
             ) : (
